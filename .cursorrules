@@ -1,0 +1,162 @@
+We use Sentry for watching for errors in our deployed application, as well as for instrumentation of our application.
+
+## Error collection
+
+Error collection is automatic and configured in `src/router.tsx`.
+
+## Instrumentation
+
+We want our server functions instrumented. So if you see a function name like `createServerFn`, you can instrument it with Sentry. You'll need to import `Sentry`:
+
+```tsx
+import * as Sentry from '@sentry/tanstackstart-react'
+```
+
+And then wrap the implementation of the server function with `Sentry.startSpan`, like so:
+
+```tsx
+Sentry.startSpan({ name: 'Requesting all the pokemon' }, async () => {
+  // Some lengthy operation here
+  await fetch('https://api.pokemon.com/data/')
+})
+```
+This document serves as some special instructions when working with Convex.
+
+# Schemas
+
+When designing the schema please see this page on built in System fields and data types available: https://docs.convex.dev/database/types
+
+Here are some specifics that are often mishandled:
+
+## v (https://docs.convex.dev/api/modules/values#v)
+
+The validator builder.
+
+This builder allows you to build validators for Convex values.
+
+Validators can be used in schema definitions and as input validators for Convex functions.
+
+Type declaration
+Name	Type
+id	<TableName>(tableName: TableName) => VId<GenericId<TableName>, "required">
+null	() => VNull<null, "required">
+number	() => VFloat64<number, "required">
+float64	() => VFloat64<number, "required">
+bigint	() => VInt64<bigint, "required">
+int64	() => VInt64<bigint, "required">
+boolean	() => VBoolean<boolean, "required">
+string	() => VString<string, "required">
+bytes	() => VBytes<ArrayBuffer, "required">
+literal	<T>(literal: T) => VLiteral<T, "required">
+array	<T>(element: T) => VArray<T["type"][], T, "required">
+object	<T>(fields: T) => VObject<Expand<{ [Property in string | number | symbol]?: Exclude<Infer<T[Property]>, undefined> } & { [Property in string | number | symbol]: Infer<T[Property]> }>, T, "required", { [Property in string | number | symbol]: Property | `${Property & string}.${T[Property]["fieldPaths"]}` }[keyof T] & string>
+record	<Key, Value>(keys: Key, values: Value) => VRecord<Record<Infer<Key>, Value["type"]>, Key, Value, "required", string>
+union	<T>(...members: T) => VUnion<T[number]["type"], T, "required", T[number]["fieldPaths"]>
+any	() => VAny<any, "required", string>
+optional	<T>(value: T) => VOptional<T>
+
+## System fields (https://docs.convex.dev/database/types#system-fields)
+
+Every document in Convex has two automatically-generated system fields:
+
+_id: The document ID of the document.
+_creationTime: The time this document was created, in milliseconds since the Unix epoch.
+
+You do not need to add indices as these are added automatically.
+
+## Example Schema
+
+This is an example of a well crafted schema.
+
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema(
+  {
+    users: defineTable({
+      name: v.string(),
+    }),
+    
+    sessions: defineTable({
+      userId: v.id("users"),
+      sessionId: v.string(),
+    }).index("sessionId", ["sessionId"]),
+    
+    threads: defineTable({
+      uuid: v.string(),
+      summary: v.optional(v.string()),
+      summarizer: v.optional(v.id("_scheduled_functions")),
+    }).index("uuid", ["uuid"]),
+
+    messages: defineTable({
+      message: v.string(),
+      threadId: v.id("threads"),
+      author: v.union(
+        v.object({
+          role: v.literal("system"),
+        }),
+        v.object({
+          role: v.literal("assistant"),
+          context: v.array(v.id("messages")),
+          model: v.optional(v.string()),
+        }),
+        v.object({
+          role: v.literal("user"),
+          userId: v.id("users"),
+        }),
+      ),
+    })
+      .index("threadId", ["threadId"]),
+  },
+);
+```
+
+Sourced from: https://github.com/PatrickJS/awesome-cursorrules/blob/main/rules/convex-cursorrules-prompt-file/.cursorrules
+# shadcn instructions
+
+Use the latest version of Shadcn to install new components, like this command to add a button component:
+
+```bash
+pnpm dlx shadcn@latest add button
+```
+
+
+## Frontend Design
+
+This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+
+The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
+
+## Design Thinking
+
+Before coding, understand the context and commit to a BOLD aesthetic direction:
+- **Purpose**: What problem does this interface solve? Who uses it?
+- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
+- **Constraints**: Technical requirements (framework, performance, accessibility).
+- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
+
+**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
+
+Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
+- Production-grade and functional
+- Visually striking and memorable
+- Cohesive with a clear aesthetic point-of-view
+- Meticulously refined in every detail
+
+## Frontend Aesthetics Guidelines
+
+Focus on:
+- **Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics; unexpected, characterful font choices. Pair a distinctive display font with a refined body font.
+- **Color & Theme**: Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
+- **Motion**: Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
+- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
+- **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
+
+NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
+
+Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
+
+**IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
+
+Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
